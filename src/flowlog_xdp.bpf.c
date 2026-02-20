@@ -406,8 +406,10 @@ int flowlog_xdp(struct xdp_md *ctx)
                 struct icmphdr_min *icmp = l4;
                 if ((void *)(icmp + 1) > data_end)
                     return XDP_PASS;
-                src_port = bpf_htons(icmp->type);
-                dst_port = bpf_htons(icmp->code);
+                /* ICMP type/code are asymmetric across directions
+                 * (e.g. echo request type=8 vs reply type=0), so
+                 * using them as ports would prevent biflow merging.
+                 * Leave ports as 0 to merge both directions. */
             }
         }
         /* Non-first fragments: ports stay 0, still counted by IP 5-tuple */
@@ -489,8 +491,7 @@ int flowlog_xdp(struct xdp_md *ctx)
                 struct icmphdr_min *icmp = l4;
                 if ((void *)(icmp + 1) > data_end)
                     return XDP_PASS;
-                src_port = bpf_htons(icmp->type);
-                dst_port = bpf_htons(icmp->code);
+                /* Same as IPv4 ICMP: leave ports as 0 for biflow merging */
             }
         }
         /* Non-first fragments: ports stay 0, still counted by IP 5-tuple */

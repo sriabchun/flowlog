@@ -75,18 +75,17 @@ static struct nf_conntrack *build_ct_query(const struct flow_key *key,
         }
     }
 
-    /* ICMP uses type/code instead of ports (same for both directions) */
-    if (key->protocol == 1 || key->protocol == 58) {
-        nfct_set_attr_u8(ct, ATTR_ICMP_TYPE, ntohs(key->init_port));
-        nfct_set_attr_u8(ct, ATTR_ICMP_CODE, ntohs(key->resp_port));
-    }
-
     return ct;
 }
 
 uint8_t conntrack_lookup(const struct flow_key *key)
 {
     if (!ct_available)
+        return FW_EVENT_ACCEPT;
+
+    /* ICMP/ICMPv6: flow key has ports=0 (type/code not stored),
+     * so conntrack lookup is not meaningful. Default to ACCEPT. */
+    if (key->protocol == 1 || key->protocol == 58)
         return FW_EVENT_ACCEPT;
 
     /* Try forward direction (init=src, resp=dst) */
