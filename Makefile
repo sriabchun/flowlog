@@ -1,4 +1,4 @@
-# nft-flow-log Makefile
+# flowlog Makefile
 # Dependencies: clang >= 14, llvm, libbpf-dev, bpftool,
 #               libnetfilter-conntrack-dev, libelf-dev, zlib1g-dev
 
@@ -12,13 +12,13 @@ BPF_CFLAGS = -O2 -g -target bpf -D__TARGET_ARCH_$(ARCH) \
 
 SRCDIR   = src
 OUTDIR   = build
-TARGET   = $(OUTDIR)/nft-flow-log
+TARGET   = $(OUTDIR)/flowlog
 
-BPF_SRC  = $(SRCDIR)/nft_flow_xdp.bpf.c
-BPF_OBJ  = $(OUTDIR)/nft_flow_xdp.bpf.o
-BPF_SKEL = $(OUTDIR)/nft_flow_xdp.skel.h
+BPF_SRC  = $(SRCDIR)/flowlog_xdp.bpf.c
+BPF_OBJ  = $(OUTDIR)/flowlog_xdp.bpf.o
+BPF_SKEL = $(OUTDIR)/flowlog_xdp.skel.h
 
-USER_SRC = $(SRCDIR)/nft_flow_log.c $(SRCDIR)/ipfix.c $(SRCDIR)/conntrack.c
+USER_SRC = $(SRCDIR)/flowlog.c $(SRCDIR)/ipfix.c $(SRCDIR)/conntrack.c
 USER_HDR = $(SRCDIR)/flow.h $(SRCDIR)/ipfix.h $(SRCDIR)/conntrack.h
 
 LIBS     = -lbpf -lelf -lz -lnetfilter_conntrack

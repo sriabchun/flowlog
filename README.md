@@ -1,4 +1,4 @@
-# nft-flow-log
+# flowlog
 
 eBPF/XDP-based flow collector daemon for network interfaces. Captures bidirectional network flows (biflows) and exports them via IPFIX (RFC 7011 + RFC 5103) over UDP.
 
@@ -44,12 +44,12 @@ apt install clang llvm libbpf-dev linux-tools-common \
 make
 ```
 
-The binary is placed at `build/nft-flow-log`.
+The binary is placed at `build/flowlog`.
 
 ## Usage
 
 ```
-nft-flow-log -i <interface> [-c <collector_ip>:<port>] [options]
+flowlog -i <interface> [-c <collector_ip>:<port>] [options]
 
 Required:
   -i <ifname>       Network interface (e.g. tap0, eth0, ens3)
@@ -77,19 +77,19 @@ Optional:
 
 ```bash
 # TAP interface: collect all traffic, export to collector
-sudo ./build/nft-flow-log -i tap0 -c 10.0.0.1:4739
+sudo ./build/flowlog -i tap0 -c 10.0.0.1:4739
 
 # Physical NIC with native XDP (mlx5, i40e, virtio-net, etc.)
-sudo ./build/nft-flow-log -i eth0 -c 10.0.0.1:4739 -N
+sudo ./build/flowlog -i eth0 -c 10.0.0.1:4739 -N
 
 # Maximum performance: native XDP + per-CPU map + dynamic sampling
-sudo ./build/nft-flow-log -i eth0 -c 10.0.0.1:4739 -N -P -s auto:1:1000
+sudo ./build/flowlog -i eth0 -c 10.0.0.1:4739 -N -P -s auto:1:1000
 
 # Print flows to stderr (no collector, any interface)
-sudo ./build/nft-flow-log -i ens3 -t 10
+sudo ./build/flowlog -i ens3 -t 10
 
 # With 30s timeout, sampling 1:100, egress only
-sudo ./build/nft-flow-log -i tap0 -c 10.0.0.1:4739 -t 30 -s 100 -D egress -v
+sudo ./build/flowlog -i tap0 -c 10.0.0.1:4739 -t 30 -s 100 -D egress -v
 ```
 
 ## pmacct Integration
@@ -114,10 +114,10 @@ Run the collector:
 nfacctd -f /etc/pmacct/nfacctd.conf
 ```
 
-Then start nft-flow-log pointing at the collector:
+Then start flowlog pointing at the collector:
 
 ```bash
-sudo ./build/nft-flow-log -i tap0 -c 127.0.0.1:4739 -v
+sudo ./build/flowlog -i tap0 -c 127.0.0.1:4739 -v
 ```
 
 ## Architecture
@@ -168,13 +168,13 @@ VM (tap0) → XDP program → │ BPF LRU hash map (64K) │
 ## File Structure
 
 ```
-nft-flow-log/
+flowlog/
 ├── Makefile
 ├── README.md
 ├── flow-log.md              # Specification
 └── src/
-    ├── nft_flow_xdp.bpf.c   # XDP/eBPF kernel program
-    ├── nft_flow_log.c        # Userspace daemon (main)
+    ├── flowlog_xdp.bpf.c   # XDP/eBPF kernel program
+    ├── flowlog.c            # Userspace daemon (main)
     ├── ipfix.c               # IPFIX encoding + UDP export
     ├── ipfix.h
     ├── flow.h                # Shared data structures

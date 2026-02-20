@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * nft_flow_xdp.bpf.c — XDP program for biflow collection on TAP interfaces.
+ * flowlog_xdp.bpf.c — XDP program for biflow collection on TAP interfaces.
  *
  * Parses L2/L3/L4, normalizes 5-tuple into a biflow key, and updates
  * per-direction counters in an LRU hash map. Purely passive (XDP_PASS).
@@ -318,7 +318,7 @@ static __always_inline int sample_check(void)
 /* --- Main XDP program --- */
 
 SEC("xdp.frags")
-int nft_flow_xdp(struct xdp_md *ctx)
+int flowlog_xdp(struct xdp_md *ctx)
 {
     void *data     = (void *)(long)ctx->data;
     void *data_end = (void *)(long)ctx->data_end;

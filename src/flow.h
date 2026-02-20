@@ -4,7 +4,7 @@
 
 /*
  * Shared data structures between XDP (kernel) and userspace.
- * Used by both nft_flow_xdp.bpf.c and nft_flow_log.c.
+ * Used by both flowlog_xdp.bpf.c and flowlog.c.
  *
  * BPF side uses linux/ headers directly instead of vmlinux.h.
  * This is possible because we don't use CO-RE field relocations

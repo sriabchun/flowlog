@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * nft_flow_log.c — Userspace daemon for nft-flow-log.
+ * flowlog.c — Userspace daemon for flowlog.
  *
  * Loads XDP BPF program onto a network interface, periodically reads
  * aggregated biflows from the BPF map, and exports them via IPFIX/UDP
@@ -27,7 +27,7 @@
 #include "flow.h"
 #include "ipfix.h"
 #include "conntrack.h"
-#include "nft_flow_xdp.skel.h"
+#include "flowlog_xdp.skel.h"
 
 static volatile int running = 1;
 static int verbose;
@@ -485,7 +485,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    struct nft_flow_xdp_bpf *skel = nft_flow_xdp_bpf__open();
+    struct flowlog_xdp_bpf *skel = flowlog_xdp_bpf__open();
     if (!skel) {
         fprintf(stderr, "failed to open BPF skeleton\n");
         return 1;
@@ -496,7 +496,7 @@ int main(int argc, char **argv)
         if (bpf_map__set_type(skel->maps.flow_map,
                               BPF_MAP_TYPE_LRU_PERCPU_HASH) < 0) {
             fprintf(stderr, "failed to set percpu map type\n");
-            nft_flow_xdp_bpf__destroy(skel);
+            flowlog_xdp_bpf__destroy(skel);
             return 1;
         }
     }
@@ -509,9 +509,9 @@ int main(int argc, char **argv)
     skel->rodata->cfg_timeout_ns = (uint64_t)timeout_sec * 1000000000ULL;
     skel->rodata->cfg_use_timer = percpu ? 0 : 1;
 
-    if (nft_flow_xdp_bpf__load(skel)) {
+    if (flowlog_xdp_bpf__load(skel)) {
         fprintf(stderr, "failed to load BPF program\n");
-        nft_flow_xdp_bpf__destroy(skel);
+        flowlog_xdp_bpf__destroy(skel);
         return 1;
     }
 
@@ -519,19 +519,19 @@ int main(int argc, char **argv)
     skel->data->cfg_sample_rate = sample_rate;
 
     /* Attach XDP via BPF link (auto-detach on crash/SIGKILL, kernel 5.9+) */
-    int prog_fd = bpf_program__fd(skel->progs.nft_flow_xdp);
+    int prog_fd = bpf_program__fd(skel->progs.flowlog_xdp);
     LIBBPF_OPTS(bpf_link_create_opts, link_opts, .flags = xdp_flags);
     int xdp_link_fd = bpf_link_create(prog_fd, ifindex, BPF_XDP, &link_opts);
     if (xdp_link_fd < 0) {
         fprintf(stderr, "failed to attach XDP to %s%s\n", ifname,
                 (xdp_flags == XDP_FLAGS_DRV_MODE)
                     ? " (native mode — driver may not support it)" : "");
-        nft_flow_xdp_bpf__destroy(skel);
+        flowlog_xdp_bpf__destroy(skel);
         return 1;
     }
 
     if (dyn.enabled) {
-        fprintf(stderr, "nft-flow-log: attached to %s (%s%s), exporting to %s "
+        fprintf(stderr, "flowlog: attached to %s (%s%s), exporting to %s "
                 "(timeout=%ds, sample=auto:%u:%u, dir=%s)\n",
                 ifname,
                 (xdp_flags == XDP_FLAGS_DRV_MODE) ? "native" : "skb",
@@ -541,7 +541,7 @@ int main(int argc, char **argv)
                 dir_filter == DIR_INGRESS ? "ingress" :
                 dir_filter == DIR_EGRESS  ? "egress"  : "both");
     } else {
-        fprintf(stderr, "nft-flow-log: attached to %s (%s%s), exporting to %s "
+        fprintf(stderr, "flowlog: attached to %s (%s%s), exporting to %s "
                 "(timeout=%ds, sample=1:%u, dir=%s)\n",
                 ifname,
                 (xdp_flags == XDP_FLAGS_DRV_MODE) ? "native" : "skb",
@@ -588,14 +588,14 @@ int main(int argc, char **argv)
         if (!ectx.keys || !ectx.vals || !ectx.actions) {
             fprintf(stderr, "failed to allocate export buffers\n");
             close(xdp_link_fd);
-            nft_flow_xdp_bpf__destroy(skel);
+            flowlog_xdp_bpf__destroy(skel);
             return 1;
         }
         rb = ring_buffer__new(rb_fd, ringbuf_event_cb, &ectx, NULL);
         if (!rb) {
             fprintf(stderr, "failed to create ring buffer consumer\n");
             close(xdp_link_fd);
-            nft_flow_xdp_bpf__destroy(skel);
+            flowlog_xdp_bpf__destroy(skel);
             return 1;
         }
     }
@@ -667,11 +667,11 @@ int main(int argc, char **argv)
     free(ectx.keys);
     free(ectx.vals);
     free(ectx.actions);
-    nft_flow_xdp_bpf__destroy(skel);
+    flowlog_xdp_bpf__destroy(skel);
     if (exp_ptr)
         ipfix_close(exp_ptr);
     conntrack_close();
 
-    fprintf(stderr, "nft-flow-log: stopped\n");
+    fprintf(stderr, "flowlog: stopped\n");
     return 0;
 }

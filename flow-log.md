@@ -1,8 +1,8 @@
-# NFT Flow Log — eBPF/XDP Flow Collector Daemon
+# Flowlog — eBPF/XDP Flow Collector Daemon
 
 ## 1. Overview
 
-Build a lightweight daemon (`nft-flow-log`) that attaches an XDP program to a TAP
+Build a lightweight daemon (`flowlog`) that attaches an XDP program to a TAP
 interface of a virtual machine, aggregates network flow data in kernel-space using
 eBPF maps, and periodically exports it via IPFIX (RFC 7011) over UDP to an
 external collector (pmacct).
@@ -42,7 +42,7 @@ If something is unclear — stop and ask.
        │  packets in both directions traverse TAP
        ▼
 ┌──────────────────────────────────────────────────────────┐
-│  XDP program (nft_flow_xdp.bpf.c)                        │
+│  XDP program (flowlog_xdp.bpf.c)                        │
 │  • Parse L2/L3/L4 headers                                │
 │  • Determine direction: ingress (host→VM) / egress (VM→host)  │
 │  • Apply direction filter (both/ingress/egress)          │
@@ -55,7 +55,7 @@ If something is unclear — stop and ask.
        │  BPF map (LRU hash, 64K entries, biflow values)
        ▼
 ┌──────────────────────────────────────────────────────────┐
-│  Userspace daemon (nft_flow_log.c)                       │
+│  Userspace daemon (flowlog.c)                       │
 │  • Loads XDP program via libbpf CO-RE                    │
 │  • Every <active_timeout> seconds:                       │
 │    – Iterates flow map, reads & deletes expired entries  │
@@ -206,7 +206,7 @@ one for IPv6 biflows (Template ID 257).
 
 ### FR-2: Userspace Daemon
 
-1. Load BPF object via `libbpf` skeleton (`nft_flow_xdp.skel.h`).
+1. Load BPF object via `libbpf` skeleton (`flowlog_xdp.skel.h`).
 2. Attach XDP program to the TAP interface.
 3. Set sample rate, direction filter, and VM MAC address in BPF array maps.
 4. Enter main loop:
@@ -251,7 +251,7 @@ one for IPv6 biflows (Template ID 257).
 ## 7. CLI Interface
 
 ```
-nft-flow-log -i <interface> [-c <collector_ip>:<port>] [options]
+flowlog -i <interface> [-c <collector_ip>:<port>] [options]
 
 Required:
   -i <ifname>         Network interface (e.g. tap0, eth0, ens3)
@@ -292,12 +292,12 @@ Optional:
 ## 9. File Structure
 
 ```
-nft-flow-log/
+flowlog/
 ├── Makefile
 ├── README.md
 ├── src/
-│   ├── nft_flow_xdp.bpf.c        # XDP/eBPF program (kernel-side)
-│   ├── nft_flow_log.c             # Userspace daemon (main)
+│   ├── flowlog_xdp.bpf.c        # XDP/eBPF program (kernel-side)
+│   ├── flowlog.c             # Userspace daemon (main)
 │   ├── ipfix.c                    # IPFIX encoding + UDP send
 │   ├── ipfix.h
 │   ├── flow.h                     # Shared flow_key/flow_value structs
@@ -316,10 +316,10 @@ nft-flow-log/
 # Dependencies: clang >= 14, llvm, libbpf-dev, bpftool,
 #               libnetfilter-conntrack-dev
 
-# 1. Compile BPF: clang -O2 -target bpf -g -c nft_flow_xdp.bpf.c
+# 1. Compile BPF: clang -O2 -target bpf -g -c flowlog_xdp.bpf.c
 #    (uses linux/ headers directly — no vmlinux.h needed)
-# 2. Generate skeleton: bpftool gen skeleton nft_flow_xdp.bpf.o > nft_flow_xdp.skel.h
-# 3. Compile userspace: gcc -O2 nft_flow_log.c ipfix.c conntrack.c -lbpf -lelf -lz -lnetfilter_conntrack
+# 2. Generate skeleton: bpftool gen skeleton flowlog_xdp.bpf.o > flowlog_xdp.skel.h
+# 3. Compile userspace: gcc -O2 flowlog.c ipfix.c conntrack.c -lbpf -lelf -lz -lnetfilter_conntrack
 ```
 
 The Makefile must automate all three steps.
@@ -330,7 +330,7 @@ The Makefile must automate all three steps.
 
 ### 11.1 Unit Testing (developer workstation)
 
-1. **BPF verifier**: `nft_flow_xdp.bpf.o` must load on kernel 6.1 without
+1. **BPF verifier**: `flowlog_xdp.bpf.o` must load on kernel 6.1 without
    verifier errors. Test with `bpftool prog load`.
 2. **IPFIX encoding**: Write a small test harness that creates fake flow records,
    encodes them, and validates the binary output against expected bytes.
@@ -340,7 +340,7 @@ The Makefile must automate all three steps.
 ### 11.2 Integration Testing
 
 1. Create a veth pair or TAP + network namespace.
-2. Run `nft-flow-log` on the TAP.
+2. Run `flowlog` on the TAP.
 3. Generate traffic with `iperf3` / `ping` / `curl`.
 4. Run `pmacctd` (pmacct) as collector.
 5. Verify: biflows appear in pmacct output with correct 5-tuple, separate
